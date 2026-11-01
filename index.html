@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CPS Tester — Click Speed Test</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { background: #0b1020; }
+  .bg-glow {
+    background:
+      radial-gradient(60rem 40rem at 10% -10%, var(--accent-a, rgba(168,85,247,.25)), transparent 60%),
+      radial-gradient(50rem 35rem at 100% 110%, var(--accent-b, rgba(34,211,238,.20)), transparent 60%),
+      #0b1020;
+  }
+  .screen { animation: screenIn .35s ease both; }
+  @keyframes screenIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+
+  .ripple {
+    position: absolute; border-radius: 9999px; pointer-events: none;
+    width: 20px; height: 20px; margin: -10px 0 0 -10px;
+    background: radial-gradient(circle, rgba(34,211,238,.75), rgba(168,85,247,.35) 60%, transparent 70%);
+    animation: ripple .6s ease-out forwards;
+  }
+  @keyframes ripple { to { transform: scale(14); opacity: 0; } }
+
+  .pop { animation: pop .12s ease-out; }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+  .zone-hit { animation: zoneHit .12s ease-out; }
+  @keyframes zoneHit { 0% { transform: scale(1); } 40% { transform: scale(.985); } 100% { transform: scale(1); } }
+
+  .count-pop { animation: countPop .9s ease-out both; }
+  @keyframes countPop { 0% { transform: scale(.4); opacity: 0; } 30% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: .9; } }
+
+  .no-select { user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body class="bg-glow min-h-screen text-slate-100 font-sans antialiased transition-all duration-500">
+
+<main class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-2xl">
+
+    <!-- ============ MENU SCREEN ============ -->
+    <section id="menuScreen" class="screen">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs tracking-widest uppercase text-cyan-300 mb-4">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> CPS Tester
+        </div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-300">
+          Click Speed Test
+        </h1>
+        <p id="tagline" class="mt-3 text-slate-400 text-base sm:text-lg"></p>
+      </div>
+
+      <div class="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-5 sm:p-8 shadow-2xl shadow-purple-900/20 space-y-7">
+
+        <!-- Input mode -->
+        <div>
+          <label class="block text-xs uppercase tracking-widest text-slate-400 mb-3">Input mode</label>
+          <div class="grid grid-cols-2 gap-3" id="modeGroup">
+            <button data-mode="mouse" type="button" class="mode-btn no-select group rounded-2xl border px-4 py-4 text-left transition-all duration-300">
+              <div class="text-2xl mb-1">🖱️</div>
+              <div class="font-semibold">Mouse Clicks</div>
+              <div class="text-xs text-slate-400">Click inside the zone</div>
+            </button>
+            <button data-mode="space" type="button" class="mode-btn no-select group rounded-2xl border px-4 py-4 text-left transition-all duration-300">
+              <div class="text-2xl mb-1">⌨️</div>
+              <div class="font-semibold">Spacebar</div>
+              <div class="text-xs text-slate-400">Tap the space key</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Duration -->
+        <div>
+          <label class="block text-xs uppercase tracking-widest text-slate-400 mb-3">Duration</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="durGroup">
+            <button data-dur="5"  type="button" class="dur-btn no-select rounded-xl border px-3 py-3 font-semibold transition-all duration-300">5s</button>
+            <button data-dur="10" type="button" class="dur-btn no-select rounded-xl border px-3 py-3 font-semibold transition-all duration-300">10s</button>
+            <button data-dur="30" type="button" class="dur-btn no-select rounded-xl border px-3 py-3 font-semibold transition-all duration-300">30s</button>
+            <button data-dur="custom" type="button" class="dur-btn no-select rounded-xl border px-3 py-3 font-semibold transition-all duration-300">Custom</button>
+          </div>
+          <div id="customWrap" class="hidden mt-3">
+            <div class="flex items-center gap-3">
+              <input id="customInput" type="number" min="1" max="300" step="1" placeholder="Seconds (1–300)"
+                     class="flex-1 rounded-xl bg-slate-950/70 border border-white/10 px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/60 transition-all duration-300" />
+              <span class="text-slate-400 text-sm">seconds</span>
+            </div>
+            <p id="customError" class="hidden mt-2 text-sm text-rose-400">Enter a whole number between 1 and 300.</p>
+          </div>
+        </div>
+
+        <!-- Start -->
+        <button id="startBtn" type="button"
+          class="no-select w-full rounded-2xl py-4 text-lg font-bold tracking-wide text-white bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-500
+                 shadow-lg shadow-purple-600/30 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[.98] transition-all duration-300">
+          Start Test
+        </button>
+        <p class="text-center text-xs text-slate-500">Tip: a 3-2-1 countdown plays first, then the timer starts instantly.</p>
+      </div>
+    </section>
+
+    <!-- ============ GAME SCREEN ============ -->
+    <section id="gameScreen" class="screen hidden">
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur p-4 text-center">
+          <div class="text-[10px] sm:text-xs uppercase tracking-widest text-slate-400">Time left</div>
+          <div id="timerDisplay" class="text-2xl sm:text-4xl font-black tabular-nums text-cyan-300">0.000</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur p-4 text-center">
+          <div class="text-[10px] sm:text-xs uppercase tracking-widest text-slate-400">Clicks</div>
+          <div id="clickDisplay" class="text-2xl sm:text-4xl font-black tabular-nums text-fuchsia-300">0</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur p-4 text-center">
+          <div class="text-[10px] sm:text-xs uppercase tracking-widest text-slate-400">Live CPS</div>
+          <div id="liveCps" class="text-2xl sm:text-4xl font-black tabular-nums text-purple-300">0.0</div>
+        </div>
+      </div>
+
+      <div class="h-2 rounded-full bg-white/10 overflow-hidden mb-4">
+        <div id="progressBar" class="h-full w-full bg-gradient-to-r from-purple-500 to-cyan-400 rounded-full" style="transform-origin:left;"></div>
+      </div>
+
+      <div id="targetZone"
+           class="no-select relative overflow-hidden h-[55vh] min-h-[320px] rounded-3xl border-2 border-dashed border-cyan-400/40
+                  bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/60 cursor-pointer
+                  shadow-[0_0_60px_-10px_rgba(168,85,247,.45)] transition-all duration-300 flex items-center justify-center">
+        <div id="zoneContent" class="text-center pointer-events-none px-4">
+          <div id="zoneIcon" class="text-5xl sm:text-6xl mb-3">🖱️</div>
+          <div id="zoneBig" class="text-3xl sm:text-5xl font-black tracking-tight text-white/90"></div>
+          <div id="zoneHint" class="mt-2 text-slate-400 text-sm sm:text-base"></div>
+        </div>
+        <div id="countdownOverlay" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center">
+          <div id="countdownNum" class="text-8xl sm:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-300"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RESULTS SCREEN ============ -->
+    <section id="resultScreen" class="screen hidden">
+      <div class="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-6 sm:p-10 shadow-2xl shadow-cyan-900/20 text-center">
+        <div class="text-xs uppercase tracking-widest text-slate-400 mb-2">Time's up!</div>
+        <div id="rankEmoji" class="text-7xl sm:text-8xl mb-2">🐢</div>
+        <h2 id="rankName" class="text-4xl sm:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-300">Turtle</h2>
+        <p id="rankDesc" class="mt-2 text-slate-400"></p>
+
+        <div class="grid grid-cols-2 gap-4 mt-8">
+          <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+            <div class="text-xs uppercase tracking-widest text-slate-400">Total clicks</div>
+            <div id="resClicks" class="text-4xl sm:text-5xl font-black text-fuchsia-300 tabular-nums mt-1">0</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+            <div class="text-xs uppercase tracking-widest text-slate-400">Speed (CPS)</div>
+            <div id="resCps" class="text-4xl sm:text-5xl font-black text-cyan-300 tabular-nums mt-1">0.00</div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm text-slate-400">
+          <span>Mode: <b id="resMode" class="text-slate-200"></b></span>
+          <span>Duration: <b id="resDur" class="text-slate-200"></b></span>
+          <span>Personal best: <b id="resBest" class="text-slate-200"></b></span>
+        </div>
+        <div id="newBest" class="hidden mt-4 inline-block px-4 py-1 rounded-full bg-gradient-to-r from-purple-600 to-cyan-500 text-sm font-bold animate-pulse">🏆 New personal best!</div>
+
+        <button id="againBtn" type="button"
+          class="no-select mt-8 w-full rounded-2xl py-4 text-lg font-bold text-white bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-500
+                 shadow-lg shadow-purple-600/30 hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[.98] transition-all duration-300">
+          Play Again
+        </button>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Elements ----------
+  const $ = (id) => document.getElementById(id);
+  const screens = { menu: $('menuScreen'), game: $('gameScreen'), result: $('resultScreen') };
+  const modeBtns = [...document.querySelectorAll('.mode-btn')];
+  const durBtns  = [...document.querySelectorAll('.dur-btn')];
+  const customWrap = $('customWrap'), customInput = $('customInput'), customError = $('customError');
+  const startBtn = $('startBtn'), againBtn = $('againBtn');
+  const timerDisplay = $('timerDisplay'), clickDisplay = $('clickDisplay'), liveCps = $('liveCps'), progressBar = $('progressBar');
+  const targetZone = $('targetZone'), zoneIcon = $('zoneIcon'), zoneBig = $('zoneBig'), zoneHint = $('zoneHint');
+  const countdownOverlay = $('countdownOverlay'), countdownNum = $('countdownNum');
+
+  // ---------- State ----------
+  const state = {
+    phase: 'menu',        // menu | countdown | playing | result
+    mode: 'mouse',
+    durSel: '10',         // '5' | '10' | '30' | 'custom'
+    duration: 10,
+    clicks: 0,
+    startTime: 0,
+    rafId: null,
+    countdownTimers: []
+  };
+
+  // ---------- Fresh menu content ----------
+  const taglines = [
+    'How fast can your fingers fly today?',
+    'Warm up those knuckles — a new record awaits.',
+    'Every click counts. Make them count faster.',
+    'Ready to turn your hand into a machine gun?',
+    'Smash that target. Chase the Lightning God.',
+    'Fresh start, fresh fingers, fresh record.',
+    'Speed is a habit. Let\'s build it.'
+  ];
+  const palettes = [
+    ['rgba(168,85,247,.28)', 'rgba(34,211,238,.20)'],
+    ['rgba(236,72,153,.25)', 'rgba(56,189,248,.20)'],
+    ['rgba(99,102,241,.30)', 'rgba(16,185,129,.18)'],
+    ['rgba(217,70,239,.26)', 'rgba(250,204,21,.14)'],
+    ['rgba(139,92,246,.30)', 'rgba(45,212,191,.20)']
+  ];
+  function freshen() {
+    $('tagline').textContent = taglines[Math.floor(Math.random() * taglines.length)];
+    const p = palettes[Math.floor(Math.random() * palettes.length)];
+    document.body.style.setProperty('--accent-a', p[0]);
+    document.body.style.setProperty('--accent-b', p[1]);
+  }
+
+  // ---------- Styling helpers for toggles ----------
+  const ACTIVE = ['border-cyan-400', 'bg-cyan-400/10', 'shadow-[0_0_25px_-5px_rgba(34,211,238,.6)]', 'text-white'];
+  const IDLE   = ['border-white/10', 'bg-slate-950/50', 'text-slate-300', 'hover:border-purple-400/60', 'hover:bg-purple-500/10', 'hover:-translate-y-0.5'];
+  function setActive(btn, on) {
+    btn.classList.remove(...ACTIVE, ...IDLE);
+    btn.classList.add(...(on ? ACTIVE : IDLE));
+  }
+  function renderToggles() {
+    modeBtns.forEach(b => setActive(b, b.dataset.mode === state.mode));
+    durBtns.forEach(b => setActive(b, b.dataset.dur === state.durSel));
+    customWrap.classList.toggle('hidden', state.durSel !== 'custom');
+  }
+
+  function show(name) {
+    Object.entries(screens).forEach(([k, el]) => {
+      el.classList.toggle('hidden', k !== name);
+    });
+    // retrigger entrance animation
+    const el = screens[name];
+    el.classList.remove('screen'); void el.offsetWidth; el.classList.add('screen');
+  }
+
+  // ---------- Duration ----------
+  function getDuration() {
+    if (state.durSel !== 'custom') return parseInt(state.durSel, 10);
+    const v = Number(customInput.value);
+    if (!Number.isInteger(v) || v < 1 || v > 300) return null;
+    return v;
+  }
+
+  // ---------- Menu events ----------
+  modeBtns.forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.mode; renderToggles(); }));
+  durBtns.forEach(b => b.addEventListener('click', () => {
+    state.durSel = b.dataset.dur;
+    customError.classList.add('hidden');
+    renderToggles();
+    if (state.durSel === 'custom') customInput.focus();
+  }));
+  customInput.addEventListener('input', () => customError.classList.add('hidden'));
+  customInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); startBtn.click(); } });
+
+  startBtn.addEventListener('click', () => {
+    const d = getDuration();
+    if (d === null) {
+      customError.classList.remove('hidden');
+      customInput.focus();
+      return;
+    }
+    state.duration = d;
+    startCountdown();
+  });
+  againBtn.addEventListener('click', () => { againBtn.blur(); resetToMenu(); });
+
+  // ---------- Game flow ----------
+  function prepareZone() {
+    const isMouse = state.mode === 'mouse';
+    zoneIcon.textContent = isMouse ? '🖱️' : '⌨️';
+    zoneBig.textContent = isMouse ? 'CLICK HERE' : 'PRESS SPACE';
+    zoneHint.textContent = isMouse ? 'Click anywhere inside this zone as fast as you can' : 'Tap the spacebar as fast as you can';
+    targetZone.style.cursor = isMouse ? 'pointer' : 'default';
+    timerDisplay.textContent = state.duration.toFixed(3);
+    clickDisplay.textContent = '0';
+    liveCps.textContent = '0.0';
+    progressBar.style.transform = 'scaleX(1)';
+    state.clicks = 0;
+  }
+
+  function startCountdown() {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    state.phase = 'countdown';
+    prepareZone();
+    show('game');
+    countdownOverlay.classList.remove('hidden');
+    let n = 3;
+    const tick = () => {
+      countdownNum.textContent = n;
+      countdownNum.classList.remove('count-pop'); void countdownNum.offsetWidth; countdownNum.classList.add('count-pop');
+      if (n === 0) return;
+      n--;
+      state.countdownTimers.push(setTimeout(() => {
+        if (n === 0) { countdownNum.textContent = 'GO!'; countdownNum.classList.remove('count-pop'); void countdownNum.offsetWidth; countdownNum.classList.add('count-pop');
+          state.countdownTimers.push(setTimeout(beginPlaying, 350));
+        } else tick();
+      }, 800));
+    };
+    tick();
+  }
+
+  function beginPlaying() {
+    countdownOverlay.classList.add('hidden');
+    state.phase = 'playing';
+    state.startTime = performance.now();
+    loop();
+  }
+
+  function loop() {
+    if (state.phase !== 'playing') return;
+    const elapsed = (performance.now() - state.startTime) / 1000;
+    const remaining = Math.max(0, state.duration - elapsed);
+    timerDisplay.textContent = remaining.toFixed(3);
+    progressBar.style.transform = 'scaleX(' + (remaining / state.duration) + ')';
+    liveCps.textContent = elapsed > 0.2 ? (state.clicks / elapsed).toFixed(1) : '0.0';
+    timerDisplay.classList.toggle('text-rose-400', remaining <= 3);
+    timerDisplay.classList.toggle('text-cyan-300', remaining > 3);
+    if (remaining <= 0) { endGame(); return; }
+    state.rafId = requestAnimationFrame(loop);
+  }
+
+  function registerHit(x, y) {
+    if (state.phase !== 'playing') return;
+    // Guard against a hit landing after time expired but before the frame ran
+    if ((performance.now() - state.startTime) / 1000 >= state.duration) return;
+    state.clicks++;
+    clickDisplay.textContent = state.clicks;
+    clickDisplay.classList.remove('pop'); void clickDisplay.offsetWidth; clickDisplay.classList.add('pop');
+    targetZone.classList.remove('zone-hit'); void targetZone.offsetWidth; targetZone.classList.add('zone-hit');
+    spawnRipple(x, y);
+  }
+
+  function spawnRipple(x, y) {
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    r.style.left = x + 'px';
+    r.style.top = y + 'px';
+    targetZone.appendChild(r);
+    setTimeout(() => r.remove(), 650);
+  }
+
+  // Mouse input (pointerdown for lowest latency, supports touch too)
+  targetZone.addEventListener('pointerdown', (e) => {
+    if (state.mode !== 'mouse') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    const rect = targetZone.getBoundingClientRect();
+    registerHit(e.clientX - rect.left, e.clientY - rect.top);
+  });
+  targetZone.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Keyboard input
+  document.addEventListener('keydown', (e) => {
+    const isSpace = e.code === 'Space' || e.key === ' ';
+    const inActive = state.phase === 'playing' || state.phase === 'countdown';
+
+    // Stop space/enter from re-triggering focused buttons or scrolling during a run
+    if (inActive && (isSpace || e.key === 'Enter')) e.preventDefault();
+
+    if (!isSpace || e.repeat) return;
+    if (state.phase === 'playing' && state.mode === 'space') {
+      const rect = targetZone.getBoundingClientRect();
+      registerHit(rect.width / 2 + (Math.random() - 0.5) * 80, rect.height / 2 + (Math.random() - 0.5) * 80);
+    }
+  });
+  // Prevent buttons activating on space keyup in Firefox during a run
+  document.addEventListener('keyup', (e) => {
+    if ((e.code === 'Space' || e.key === ' ') && (state.phase === 'playing' || state.phase === 'countdown')) e.preventDefault();
+  });
+
+  // ---------- Results ----------
+  function getRank(cps) {
+    if (cps < 4)  return { emoji: '🐢', name: 'Turtle',        desc: 'Slow and steady… very steady. Time to warm up those fingers!' };
+    if (cps < 8)  return { emoji: '🐇', name: 'Rabbit',        desc: 'Quick hops! You\'re faster than most casual clickers.' };
+    if (cps < 12) return { emoji: '🐆', name: 'Cheetah',       desc: 'Blazing speed. Your mouse is begging for mercy.' };
+    return            { emoji: '⚡', name: 'Lightning God', desc: 'Mortals tremble. Your fingers defy physics.' };
+  }
+
+  function loadBest() {
+    try { return parseFloat(localStorage.getItem('cps_best_' + state.mode)) || 0; } catch (_) { return 0; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem('cps_best_' + state.mode, String(v)); } catch (_) {}
+  }
+
+  function endGame() {
+    cancelAnimationFrame(state.rafId);
+    state.phase = 'result';              // freezes all inputs immediately
+    timerDisplay.textContent = '0.000';
+    progressBar.style.transform = 'scaleX(0)';
+
+    const total = state.clicks;
+    const cps = total / state.duration;
+    const rank = getRank(cps);
+
+    $('resClicks').textContent = total;
+    $('resCps').textContent = cps.toFixed(2);
+    $('rankEmoji').textContent = rank.emoji;
+    $('rankName').textContent = rank.name;
+    $('rankDesc').textContent = rank.desc;
+    $('resMode').textContent = state.mode === 'mouse' ? 'Mouse' : 'Spacebar';
+    $('resDur').textContent = state.duration + 's';
+
+    const prevBest = loadBest();
+    const isBest = cps > prevBest && total > 0;
+    if (isBest) saveBest(cps);
+    $('resBest').textContent = (isBest ? cps : prevBest).toFixed(2) + ' CPS';
+    $('newBest').classList.toggle('hidden', !isBest);
+
+    // short beat so the final click's animation is visible, then transition
+    setTimeout(() => { if (state.phase === 'result') show('result'); }, 250);
+  }
+
+  // ---------- Reset ----------
+  function resetToMenu() {
+    cancelAnimationFrame(state.rafId);
+    state.countdownTimers.forEach(clearTimeout);
+    state.countdownTimers = [];
+    state.phase = 'menu';
+    state.clicks = 0;
+    countdownOverlay.classList.add('hidden');
+    targetZone.querySelectorAll('.ripple').forEach(r => r.remove());
+    timerDisplay.classList.remove('text-rose-400'); timerDisplay.classList.add('text-cyan-300');
+    customError.classList.add('hidden');
+    freshen();
+    renderToggles();
+    show('menu');
+  }
+
+  // ---------- Init ----------
+  freshen();
+  renderToggles();
+})();
+</script>
+</body>
+</html>
